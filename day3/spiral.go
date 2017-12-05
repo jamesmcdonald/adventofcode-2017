@@ -26,12 +26,36 @@ func (d direction) String() string {
 	}
 }
 
-func spiral(loc int) (x int, y int) {
+var squares map[int]map[int]int
+
+func addsquare(x int, y int) {
+	value := 0
+	value += squares[x-1][y-1]
+	value += squares[x-1][y]
+	value += squares[x-1][y+1]
+	value += squares[x][y-1]
+	value += squares[x][y+1]
+	value += squares[x+1][y-1]
+	value += squares[x+1][y]
+	value += squares[x+1][y+1]
+	if squares[x] == nil {
+		squares[x] = make(map[int]int)
+	}
+	squares[x][y] = value
+}
+
+func spiral(loc int) (x int, y int, value int) {
 	i := 1
+
+	// Set up squares to calculate values for part 2
+	squares = make(map[int]map[int]int)
+	squares[0] = make(map[int]int)
+	squares[0][0] = 1
+
 	var direction direction = east
 
 	if loc == 1 {
-		return 0, 0
+		return 0, 0, 0
 	}
 	for pos := 2; pos <= loc; pos++ {
 		switch direction {
@@ -67,18 +91,24 @@ func spiral(loc int) (x int, y int) {
 				fmt.Printf("Go %s at (%d,%d)\n", direction, x, y)
 			}
 		}
-		fmt.Printf("%7d (%2d,%2d) %s %d\n", pos, x, y, direction, i)
+		//fmt.Printf("%7d (%2d,%2d) %s %d\n", pos, x, y, direction, i)
+
+		// If we don't have the value yet, compute this square
+		if value < loc {
+			addsquare(x, y)
+			value = squares[x][y]
+		}
 	}
 	return
 }
 
 func main() {
-	x, y := spiral(277678)
+	x, y, value := spiral(277678)
 	if x < 0 {
 		x = -x
 	}
 	if y < 0 {
 		y = -y
 	}
-	fmt.Println(x + y)
+	fmt.Println(x+y, value)
 }
