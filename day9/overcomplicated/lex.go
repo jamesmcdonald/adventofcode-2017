@@ -5,14 +5,18 @@ import (
 	"unicode/utf8"
 )
 
-type lexer struct {
-	name  string
-	input string
-	start int
-	pos   int
-	width int
-	items chan item
-}
+type itemType int
+
+const (
+	itemError itemType = iota
+	itemEOF
+	itemGroupStart
+	itemGroupEnd
+	itemGarbageStart
+	itemGarbage
+	itemGarbageEnd
+	itemComma
+)
 
 type item struct {
 	typ itemType
@@ -29,18 +33,14 @@ func (i item) String() string {
 	return fmt.Sprintf("%q", i.val)
 }
 
-type itemType int
-
-const (
-	itemError itemType = iota
-	itemEOF
-	itemGroupStart
-	itemGroupEnd
-	itemGarbageStart
-	itemGarbage
-	itemGarbageEnd
-	itemComma
-)
+type lexer struct {
+	name  string
+	input string
+	start int
+	pos   int
+	width int
+	items chan item
+}
 
 const eof = -1
 
@@ -162,8 +162,9 @@ func lexInsideGarbage(l *lexer) stateFn {
 }
 
 func lexEscape(l *lexer) stateFn {
-	l.next()
-	l.next()
+	if l.next() == eof || l.next() == eof {
+		return l.errorf("unexpected EOF in escape")
+	}
 	l.ignore()
 	return lexInsideGarbage
 }
