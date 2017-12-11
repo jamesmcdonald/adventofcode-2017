@@ -58,14 +58,13 @@ func (h *hexloc) move(d direction) {
 }
 
 func (h hexloc) distance() int {
-	result := 0
 	if h.x < 0 {
 		h.x = -h.x
 	}
 	if h.y < 0 {
 		h.y = -h.y
 	}
-	result += h.x
+	result := h.x
 	h.y -= h.x
 	result += h.y / 2
 	return result
