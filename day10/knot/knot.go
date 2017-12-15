@@ -1,13 +1,13 @@
-package main
+package knot
 
 import (
 	"fmt"
-	"io/ioutil"
 	"strconv"
 	"strings"
 )
 
-func parseinput(instring string) ([]int, error) {
+// ParseInput parses a list of integers into a funky array
+func ParseInput(instring string) ([]int, error) {
 	instrings := strings.Split(strings.TrimSpace(instring), ",")
 	input := make([]int, len(instrings))
 	for i, s := range instrings {
@@ -20,7 +20,8 @@ func parseinput(instring string) ([]int, error) {
 	return input, nil
 }
 
-func parseascii(instring string) []int {
+// ParseASCII returns the bytes of a string as ints with salt appended
+func ParseASCII(instring string) []int {
 	instring = strings.TrimSpace(instring)
 	input := make([]int, len(instring))
 	for i, c := range instring {
@@ -32,7 +33,8 @@ func parseascii(instring string) []int {
 	return input
 }
 
-func knot(sequence []int, rounds int) [256]int {
+// Knot computes a knot for a given number of rounds (should be 64)
+func Knot(sequence []int, rounds int) [256]int {
 	var ring [256]int
 	for i := range ring {
 		ring[i] = i
@@ -55,7 +57,8 @@ func knot(sequence []int, rounds int) [256]int {
 	return ring
 }
 
-func hash(ring [256]int) [16]int {
+// Hash computes the hask of a knot
+func Hash(ring [256]int) [16]int {
 	var result [16]int
 	for i := 0; i < 16; i++ {
 		result[i] = ring[i*16]
@@ -66,26 +69,10 @@ func hash(ring [256]int) [16]int {
 	return result
 }
 
-func printhash(h [16]int) {
+// PrintHash does what it sounds like it does
+func PrintHash(h [16]int) {
 	for _, v := range h {
 		fmt.Printf("%02x", v)
 	}
 	fmt.Println()
-}
-
-func main() {
-	instring, err := ioutil.ReadFile("input")
-	if err != nil {
-		panic(err)
-	}
-	input1, err := parseinput(string(instring))
-	if err != nil {
-		panic(err)
-	}
-	input2 := parseascii(string(instring))
-	result1 := knot(input1, 1)
-	fmt.Println(result1[0] * result1[1])
-
-	result2 := knot(input2, 64)
-	printhash(hash(result2))
 }
