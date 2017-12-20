@@ -7,68 +7,89 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type program struct {
-	reg      map[string]int64
-	last     int64
-	commands map[int64][]string
+	id        int
+	reg       map[string]int64
+	last      int64
+	commands  map[int64][]string
+	output    chan int64
+	input     chan int64
+	sendcount int
 }
 
 func (p program) valorreg(s string) int64 {
 	val, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		return reg[s]
+		return p.reg[s]
 	}
 	return val
 }
 
-func (p program) cmd(parts []string) int64 {
+func (p *program) cmd(parts []string) (int64, bool) {
 	switch parts[0] {
 	case "snd":
 		val := p.valorreg(parts[1])
-		fmt.Printf("Playing sound: %d\n", val)
+		fmt.Printf("%d Sending: %d\n", p.id, val)
 		p.last = val
+		p.output <- val
+		p.sendcount++
 	case "set":
 		val := p.valorreg(parts[2])
 		p.reg[parts[1]] = val
-		fmt.Printf("Set %s to %d\n", parts[1], val)
+		fmt.Printf("%d Set %s to %d\n", p.id, parts[1], val)
 	case "add":
 		val := p.valorreg(parts[2])
 		p.reg[parts[1]] += val
-		fmt.Printf("Increase %s by %d [%d]\n", parts[1], val, p.reg[parts[1]])
+		fmt.Printf("%d Increase %s by %d [%d]\n", p.id, parts[1], val, p.reg[parts[1]])
 	case "mul":
 		val := p.valorreg(parts[2])
 		p.reg[parts[1]] *= val
-		fmt.Printf("Multiply %s by %d [%d]\n", parts[1], val, p.reg[parts[1]])
+		fmt.Printf("%d Multiply %s by %d [%d]\n", p.id, parts[1], val, p.reg[parts[1]])
 	case "rcv":
 		val := p.valorreg(parts[1])
 		if val != 0 {
-			fmt.Printf("Received last frequency: %d\n", p.last)
+			c1 := make(chan bool)
+			go func() {
+				time.Sleep(time.Second * 1)
+				c1 <- true
+			}()
+			select {
+			case rcv := <-p.input:
+				fmt.Printf("%d Received last frequency: %d\n", p.id, rcv)
+			case <-c1:
+				fmt.Printf("%d Aborting on wait\n", p.id)
+				return 0, true
+			}
 		}
 	case "jgz":
 		cond := p.valorreg(parts[1])
 		jump := p.valorreg(parts[2])
 		if cond > 0 {
-			fmt.Printf("Jumping by %d\n", jump)
-			return jump
+			fmt.Printf("%d Jumping by %d\n", p.id, jump)
+			return jump, false
 		}
 	case "mod":
 		regval := p.valorreg(parts[1])
 		val := p.valorreg(parts[2])
 		p.reg[parts[1]] = regval % val
-		fmt.Printf("Modulo %s by %d [%d]\n", parts[1], val, p.reg[parts[1]])
+		fmt.Printf("%d Modulo %s by %d [%d]\n", p.id, parts[1], val, p.reg[parts[1]])
 
 	}
-	return 1
+	return 1, false
 }
 
 func (p *program) runprogram(progreader io.Reader, id int, output chan int64, input chan int64) {
-	program := make(map[int64][]string)
+	p.id = id
+	p.commands = make(map[int64][]string)
+	p.output = output
+	p.input = input
 	scanner := bufio.NewScanner(progreader)
 	var i int64
 	for scanner.Scan() {
-		program[i] = strings.Split(scanner.Text(), " ")
+		p.commands[i] = strings.Split(scanner.Text(), " ")
 		i++
 	}
 	var length = i
@@ -78,20 +99,28 @@ func (p *program) runprogram(progreader io.Reader, id int, output chan int64, in
 		if pc < 0 || pc >= length {
 			break
 		}
-		jump := cmd(program[pc])
+		jump, stop := p.cmd(p.commands[pc])
+		if stop == true {
+			return
+		}
 		pc += jump
 	}
-
 }
 
 func main() {
-	reg = make(map[string]int64)
-	input, err := os.Open("input")
+	input0, err := os.Open("input")
 	if err != nil {
 		panic(err)
 	}
-	fromzero := make(chan int64)
-	fromone := make(chan int64)
-	go runprogram(input, 0, fromzero, fromone)
-	runprogram(input, 1, fromone, fromzero)
+	input1, err := os.Open("input")
+	if err != nil {
+		panic(err)
+	}
+	p0 := program{reg: make(map[string]int64)}
+	p1 := program{reg: make(map[string]int64)}
+	fromzero := make(chan int64, 1000)
+	fromone := make(chan int64, 1000)
+	go p0.runprogram(input0, 0, fromzero, fromone)
+	p1.runprogram(input1, 1, fromone, fromzero)
+	fmt.Println(p0.sendcount, p1.sendcount)
 }
