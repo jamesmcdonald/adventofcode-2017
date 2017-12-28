@@ -134,7 +134,7 @@ func main() {
 	fromzero := make(chan int, 1000)
 	fromone := make(chan int, 1000)
 	//go p0.runprogram(input0, 0, fromzero, fromone)
-	p1.reg["a"] = 1
+	p1.reg["a"] = 0
 	p1.runprogram(input1, 1, fromone, fromzero)
 	fmt.Println(p1.mulcount)
 }
